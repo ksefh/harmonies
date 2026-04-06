@@ -232,6 +232,21 @@ const initGame = (names=['Nestor','Lili']) => {
 
 const genRoomCode = () => Math.random().toString(36).substring(2,8).toUpperCase();
 
+// Firebase convertit les tableaux en objets {0:...,1:...} — on reconvertit à la lecture
+const fixArr = v => {
+  if (v === null || v === undefined) return v;
+  if (Array.isArray(v)) return v.map(fixArr);
+  if (typeof v === 'object') {
+    const keys = Object.keys(v);
+    const isNumeric = keys.length > 0 && keys.every((k,i) => String(i) === k);
+    if (isNumeric) return keys.map(k => fixArr(v[k]));
+    const out = {};
+    keys.forEach(k => { out[k] = fixArr(v[k]); });
+    return out;
+  }
+  return v;
+};
+
 // ══════════════════════════════════════════════════════════════════
 //  COMPOSANTS VISUELS
 // ══════════════════════════════════════════════════════════════════
@@ -474,7 +489,7 @@ export default function App(){
     const unsub = onValue(gameRef, snap => {
       if (isWriting.current) return; // ignore nos propres écritures
       const data = snap.val();
-      if (data) setGs(data);
+      if (data) setGs(fixArr(data));
     });
     return () => off(gameRef, 'value', unsub);
   }, [roomCode]);
@@ -506,9 +521,10 @@ export default function App(){
   const handleJoinRoom = useCallback(async (code, name) => {
     const snap = await get(ref(db, `rooms/${code}/gameState`));
     const gameState = snap.val();
+    const fixedGs = fixArr(gameState);
     const updatedGs = {
-      ...gameState,
-      players: gameState.players.map((p, i) => i === 1 ? { ...p, name } : p),
+      ...fixedGs,
+      players: fixedGs.players.map((p, i) => i === 1 ? { ...p, name } : p),
     };
     await set(ref(db, `rooms/${code}/players/1`), { name, joined: true });
     await set(ref(db, `rooms/${code}/gameState`), updatedGs);
