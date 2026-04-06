@@ -247,6 +247,39 @@ const fixArr = v => {
   return v;
 };
 
+// Firebase supprime les [] vides et les null → on remet les valeurs par défaut
+const fa = v => Array.isArray(v) ? v : [];  // force array
+const normalizeGs = gs => {
+  if (!gs) return gs;
+  return {
+    ...gs,
+    bag:              fa(gs.bag),
+    pendingTokens:    fa(gs.pendingTokens),
+    visibleCards:     fa(gs.visibleCards),
+    cardDeck:         fa(gs.cardDeck),
+    log:              fa(gs.log).length ? fa(gs.log) : [''],
+    centralBoard:     fa(gs.centralBoard).map(slot => fa(slot)),
+    selectedSlot:     gs.selectedSlot ?? null,
+    selectedPendingIdx: gs.selectedPendingIdx ?? null,
+    turnStartSnapshot:  gs.turnStartSnapshot ?? null,
+    hasTakenCardThisTurn: gs.hasTakenCardThisTurn ?? false,
+    gameOver:         gs.gameOver ?? false,
+    players: fa(gs.players).map(p => ({
+      ...p,
+      animalCards:    fa(p.animalCards),
+      completedCards: fa(p.completedCards),
+      grid: fa(p.grid).map(h => ({
+        ...h,
+        stack:      fa(h.stack),
+        animalCube: h.animalCube ?? null,
+      })),
+    })),
+  };
+};
+
+// Applique les deux corrections à la lecture depuis Firebase
+const fromFirebase = data => normalizeGs(fixArr(data));
+
 // ══════════════════════════════════════════════════════════════════
 //  COMPOSANTS VISUELS
 // ══════════════════════════════════════════════════════════════════
@@ -489,7 +522,7 @@ export default function App(){
     const unsub = onValue(gameRef, snap => {
       if (isWriting.current) return; // ignore nos propres écritures
       const data = snap.val();
-      if (data) setGs(fixArr(data));
+      if (data) setGs(fromFirebase(data));
     });
     return () => off(gameRef, 'value', unsub);
   }, [roomCode]);
@@ -521,7 +554,7 @@ export default function App(){
   const handleJoinRoom = useCallback(async (code, name) => {
     const snap = await get(ref(db, `rooms/${code}/gameState`));
     const gameState = snap.val();
-    const fixedGs = fixArr(gameState);
+    const fixedGs = fromFirebase(gameState);
     const updatedGs = {
       ...fixedGs,
       players: fixedGs.players.map((p, i) => i === 1 ? { ...p, name } : p),
