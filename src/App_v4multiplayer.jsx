@@ -232,54 +232,6 @@ const initGame = (names=['Nestor','Lili']) => {
 
 const genRoomCode = () => Math.random().toString(36).substring(2,8).toUpperCase();
 
-// Firebase convertit les tableaux en objets {0:...,1:...} — on reconvertit à la lecture
-const fixArr = v => {
-  if (v === null || v === undefined) return v;
-  if (Array.isArray(v)) return v.map(fixArr);
-  if (typeof v === 'object') {
-    const keys = Object.keys(v);
-    const isNumeric = keys.length > 0 && keys.every((k,i) => String(i) === k);
-    if (isNumeric) return keys.map(k => fixArr(v[k]));
-    const out = {};
-    keys.forEach(k => { out[k] = fixArr(v[k]); });
-    return out;
-  }
-  return v;
-};
-
-// Firebase supprime les [] vides et les null → on remet les valeurs par défaut
-const fa = v => Array.isArray(v) ? v : [];  // force array
-const normalizeGs = gs => {
-  if (!gs) return gs;
-  return {
-    ...gs,
-    bag:              fa(gs.bag),
-    pendingTokens:    fa(gs.pendingTokens),
-    visibleCards:     fa(gs.visibleCards),
-    cardDeck:         fa(gs.cardDeck),
-    log:              fa(gs.log).length ? fa(gs.log) : [''],
-    centralBoard:     fa(gs.centralBoard).map(slot => fa(slot)),
-    selectedSlot:     gs.selectedSlot ?? null,
-    selectedPendingIdx: gs.selectedPendingIdx ?? null,
-    turnStartSnapshot:  gs.turnStartSnapshot ?? null,
-    hasTakenCardThisTurn: gs.hasTakenCardThisTurn ?? false,
-    gameOver:         gs.gameOver ?? false,
-    players: fa(gs.players).map(p => ({
-      ...p,
-      animalCards:    fa(p.animalCards),
-      completedCards: fa(p.completedCards),
-      grid: fa(p.grid).map(h => ({
-        ...h,
-        stack:      fa(h.stack),
-        animalCube: h.animalCube ?? null,
-      })),
-    })),
-  };
-};
-
-// Applique les deux corrections à la lecture depuis Firebase
-const fromFirebase = data => normalizeGs(fixArr(data));
-
 // ══════════════════════════════════════════════════════════════════
 //  COMPOSANTS VISUELS
 // ══════════════════════════════════════════════════════════════════
@@ -522,7 +474,7 @@ export default function App(){
     const unsub = onValue(gameRef, snap => {
       if (isWriting.current) return; // ignore nos propres écritures
       const data = snap.val();
-      if (data) setGs(fromFirebase(data));
+      if (data) setGs(data);
     });
     return () => off(gameRef, 'value', unsub);
   }, [roomCode]);
@@ -554,10 +506,9 @@ export default function App(){
   const handleJoinRoom = useCallback(async (code, name) => {
     const snap = await get(ref(db, `rooms/${code}/gameState`));
     const gameState = snap.val();
-    const fixedGs = fromFirebase(gameState);
     const updatedGs = {
-      ...fixedGs,
-      players: fixedGs.players.map((p, i) => i === 1 ? { ...p, name } : p),
+      ...gameState,
+      players: gameState.players.map((p, i) => i === 1 ? { ...p, name } : p),
     };
     await set(ref(db, `rooms/${code}/players/1`), { name, joined: true });
     await set(ref(db, `rooms/${code}/gameState`), updatedGs);
@@ -659,11 +610,12 @@ export default function App(){
     const newBoard = gs.centralBoard.map((slot,i) => i!==gs.selectedSlot ? slot : newBag.splice(0,3));
     let vc=[...gs.visibleCards], cd=[...gs.cardDeck];
     while(vc.length<5&&cd.length>0) vc.push(cd.shift());
-    
+    const empty = players[pi].grid.filter(h=>h.stack.length===0&&!h.animalCube).length;
+    const gameOver = empty<=2 || newBag.length===0;
     const newGs = {...gs, players, bag:newBag, centralBoard:newBoard, visibleCards:vc, cardDeck:cd,
       selectedSlot:null, pendingTokens:[], selectedPendingIdx:null,
-      phase:'optional', gameOver: false,
-      log:['Jetons placés — actions optionnelles.',...gs.log.slice(0,4)]};
+      phase:gameOver?'game_over':'optional', gameOver,
+      log:gameOver?['🏁 Fin de partie !']:['Jetons placés — actions optionnelles.',...gs.log.slice(0,4)]};
     setGs(newGs); syncGame(newGs);
   }, [gs, isMyTurn, cubeMode, validHexIds, cp, syncGame]);
 
@@ -693,17 +645,6 @@ export default function App(){
   const handleEndTurn = useCallback(() => {
     if (!isMyTurn || gs.phase !== 'optional') return;
     setCubeMode(null);
-
-    // Vérification de fin de partie ici
-    const pi = gs.currentPlayer;
-    const empty = gs.players[pi].grid.filter(h => h.stack.length === 0 && !h.animalCube).length;
-    
-    if (empty <= 2 || gs.bag.length === 0) {
-      const newGs = {...gs, phase:'game_over', gameOver:true, log:['🏁 Fin de partie !', ...gs.log.slice(0,4)]};
-      setGs(newGs); syncGame(newGs);
-      return; 
-    }
-
     const next = 1 - gs.currentPlayer;
     const newGs = {...gs, currentPlayer:next, phase:'select_slot',
       turn: gs.turn + (gs.currentPlayer===1?1:0), turnStartSnapshot:null, hasTakenCardThisTurn:false,
