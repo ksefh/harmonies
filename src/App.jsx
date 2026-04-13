@@ -300,10 +300,21 @@ function Hexagon({hex,isHighlighted,onClick}){
           fill={top?TOKEN_STYLES[top].bg:'#e9dcc9'}
           stroke={isHighlighted?'#FFD600':(top?TOKEN_STYLES[top].border:'#c5a97a')}
           strokeWidth={isHighlighted?9:5} strokeLinejoin="round" paintOrder="stroke" opacity={top?1:0.65}/>
-        {stack.length>1&&!animalCube&&<text x="50" y="52" textAnchor="middle" dominantBaseline="middle"
-          fontSize="26" fontWeight="bold" fill="rgba(255,255,255,.85)" style={{userSelect:'none'}}>{stack.length}</text>}
-        {animalCube&&<text x="50" y="54" textAnchor="middle" dominantBaseline="middle"
-          fontSize="26" style={{userSelect:'none'}}>{animalCube}</text>}
+        {/* 1. Cas : L'animal ET le chiffre sont présents (on les espace) */}
+        {stack.length > 1 && animalCube && (
+          <>
+            <text x="50" y="35" textAnchor="middle" dominantBaseline="middle" fontSize="22" style={{userSelect:'none'}}>{animalCube}</text>
+            <text x="50" y="65" textAnchor="middle" dominantBaseline="middle" fontSize="19" fontWeight="bold" fill="rgba(255,255,255,.95)" style={{userSelect:'none'}}>{stack.length}</text>
+          </>
+        )}
+
+        {/* 2. Cas : Uniquement le chiffre (hauteur > 1) */}
+        {stack.length > 1 && !animalCube && (
+          <text x="50" y="52" textAnchor="middle" dominantBaseline="middle" fontSize="26" fontWeight="bold" fill="rgba(255,255,255,.85)" style={{userSelect:'none'}}>{stack.length}</text>
+        )}
+
+        {/* 3. Cas : Uniquement l'animal (sur une pile de 0 ou 1) */}
+        {animalCube && stack.length <= 1 && (<text x="50" y="54" textAnchor="middle" dominantBaseline="middle" fontSize="26" style={{userSelect:'none'}}>{animalCube}</text>)}
       </svg>
     </div>
   );
