@@ -195,7 +195,7 @@ const findValidTargets = (card, hexMap) => {
 
 const TREE_PTS=[0,1,3,7], MOUNT_PTS=[0,1,3,7];
 const getRiverScore = n => n<=6?([0,0,2,5,11,15,15][n]??0):15+(n-6)*4;
-const getCardScore  = c => c.vps[Math.min(c.cubesPlaced,c.vps.length-1)]??0;
+const getCardScore  = c => c.cubesPlaced === 0 ? 0 : c.vps[c.cubesPlaced - 1];
 
 const scoreGrid = grid => {
   const m={}; grid.forEach(h=>{m[h.id]=h;});
