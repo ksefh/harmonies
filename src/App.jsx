@@ -200,7 +200,7 @@ const getCardScore  = c => c.cubesPlaced === 0 ? 0 : c.vps[c.cubesPlaced - 1];
 const scoreGrid = grid => {
   const m={}; grid.forEach(h=>{m[h.id]=h;});
   let trees=0,mountains=0,fields=0,buildings=0,river=0;
-  grid.forEach(h=>{ if(h.stack.length>0&&h.stack[h.stack.length-1]==='GREEN') trees+=TREE_PTS[h.stack.length]??0; });
+  grid.forEach(h=>{if(h.stack.length===2&&h.stack[h.stack.length-1]==='RED'){const cs=new Set();getNeighborIds(h.q,h.r).forEach(n=>{const nb=m[n];if(nb&&nb.stack.length>0)cs.add(nb.stack[nb.stack.length-1]);});if(cs.size>=3)buildings+=5;}});
   const mIds=new Set(grid.filter(h=>h.stack.length>0&&h.stack.every(t=>t==='GRAY')).map(h=>h.id));
   mIds.forEach(id=>{const h=m[id];if(getNeighborIds(h.q,h.r).some(n=>mIds.has(n)))mountains+=MOUNT_PTS[h.stack.length]??0;});
   const yIds=new Set(grid.filter(h=>h.stack.length===1&&h.stack[0]==='YELLOW').map(h=>h.id));
