@@ -698,6 +698,7 @@ export default function App(){
     const newGs = {...gs, bag:snap.bag, centralBoard:snap.centralBoard, players:snap.players,
       visibleCards:snap.visibleCards, cardDeck:snap.cardDeck,
       phase:'select_slot', selectedSlot:null, pendingTokens:[], selectedPendingIdx:null, turnStartSnapshot:null,
+      hasTakenCardThisTurn: false,
       log:['↺ Tour annulé — rechoisissez un emplacement.',...gs.log.slice(0,4)]};
     setGs(newGs); syncGame(newGs);
   }, [gs, isMyTurn, syncGame]);
