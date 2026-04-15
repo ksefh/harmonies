@@ -69,7 +69,7 @@ const ANIMAL_POOL = ANIMAL_POOL_DEF.map(a => ({ ...a, image: null, cubeToken: a.
 const PATTERN_GRID_POS = {
   1: [[0,0],[0,1],[0,2]],
   2: [[0,0],[1,0]],
-  3: [[1,0],[0,0],[0,1]],
+  3: [[1,0],[0,0],[2,1]],
   4: [[0,0],[1,0],[0,1]],
   5: [[1,0],[0,0],[0,1],[1,1]],
 };
@@ -143,7 +143,12 @@ const findValidTargets = (card, hexMap) => {
       if (!hexMatchesType(hexC, t0, true)) return;
       const neigh = getNeighborIds(hexC.q,hexC.r).map(id=>hexMap[id]).filter(Boolean);
       const hasMatch = neigh.some((n1,i) =>
-        hexMatchesType(n1,t1,false) && neigh.some((n2,j) => j!==i && hexMatchesType(n2,t2,false))
+        hexMatchesType(n1,t1,false) && neigh.some((n2,j) => {
+          if (j === i) return false;
+          if (!hexMatchesType(n2,t2,false)) return false;
+          // Forme en C : n1 et n2 ne doivent PAS être adjacents
+          return !getNeighborIds(n1.q,n1.r).includes(n2.id);
+        })
       );
       if (hasMatch) valid.add(hexC.id);
     });
