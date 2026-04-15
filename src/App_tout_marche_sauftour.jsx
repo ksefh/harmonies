@@ -226,7 +226,7 @@ const initGame = (names=['Nestor','Lili']) => {
   return { bag,centralBoard,visibleCards:all.slice(0,5),cardDeck:all.slice(5),
     players:names.map(name=>({name,grid:createBoard(),animalCards:[],completedCards:[]})),
     currentPlayer:0,phase:'select_slot',selectedSlot:null,pendingTokens:[],selectedPendingIdx:null,
-    turn:1,gameOver:false,lastRound:false,turnStartSnapshot:null,hasTakenCardThisTurn:false,
+    turn:1,gameOver:false,turnStartSnapshot:null,hasTakenCardThisTurn:false,
     log:[`Au tour de ${names[0]} — Choisissez un emplacement.`] };
 };
 
@@ -263,7 +263,6 @@ const normalizeGs = gs => {
     selectedPendingIdx: gs.selectedPendingIdx ?? null,
     turnStartSnapshot:  gs.turnStartSnapshot ?? null,
     hasTakenCardThisTurn: gs.hasTakenCardThisTurn ?? false,
-    lastRound:        gs.lastRound ?? false,
     gameOver:         gs.gameOver ?? false,
     players: fa(gs.players).map(p => ({
       ...p,
@@ -706,42 +705,20 @@ export default function App(){
     if (!isMyTurn || gs.phase !== 'optional') return;
     setCubeMode(null);
 
+    // Vérification de fin de partie ici
     const pi = gs.currentPlayer;
     const empty = gs.players[pi].grid.filter(h => h.stack.length === 0 && !h.animalCube).length;
-    const triggerEnd = empty <= 2 || gs.bag.length === 0;
-
-    // Cas 1 : dernier tour en cours, joueur 1 termine -> fin de partie equitable
-    if (gs.lastRound && pi === 1) {
-      const newGs = {...gs, phase:'game_over', gameOver:true, lastRound:false,
-        log:['FIN DE PARTIE ! Les deux joueurs ont joue le meme nombre de tours.', ...gs.log.slice(0,4)]};
+    
+    if (empty <= 2 || gs.bag.length === 0) {
+      const newGs = {...gs, phase:'game_over', gameOver:true, log:['🏁 Fin de partie !', ...gs.log.slice(0,4)]};
       setGs(newGs); syncGame(newGs);
-      return;
+      return; 
     }
 
-    // Cas 2 : condition de fin declenchee ce tour
-    if (triggerEnd) {
-      if (pi === 0) {
-        // Joueur 0 declenche la fin -> joueur 1 a droit a un dernier tour
-        const next = 1;
-        const newGs = {...gs, currentPlayer:next, phase:'select_slot',
-          turn: gs.turn, turnStartSnapshot:null, hasTakenCardThisTurn:false,
-          lastRound: true,
-          log:[`Fin imminente ! Dernier tour de ${gs.players[next].name}.`,...gs.log.slice(0,4)]};
-        setGs(newGs); syncGame(newGs);
-      } else {
-        // Joueur 1 declenche la fin -> les deux ont joue pareil, fin immediate
-        const newGs = {...gs, phase:'game_over', gameOver:true,
-          log:['FIN DE PARTIE !', ...gs.log.slice(0,4)]};
-        setGs(newGs); syncGame(newGs);
-      }
-      return;
-    }
-
-    // Cas 3 : fin de tour normale
     const next = 1 - gs.currentPlayer;
     const newGs = {...gs, currentPlayer:next, phase:'select_slot',
       turn: gs.turn + (gs.currentPlayer===1?1:0), turnStartSnapshot:null, hasTakenCardThisTurn:false,
-      log:[`Au tour de ${gs.players[next].name} - Choisissez un emplacement.`,...gs.log.slice(0,4)]};
+      log:[`Au tour de ${gs.players[next].name} — Choisissez un emplacement.`,...gs.log.slice(0,4)]};
     setGs(newGs); syncGame(newGs);
   }, [gs, isMyTurn, syncGame]);
 
@@ -802,11 +779,9 @@ export default function App(){
       }}>
         {gs.gameOver
           ? '🏁 Fin de partie !'
-          : gs.lastRound
-            ? (isMyTurn ? `⚠️ Dernier tour ! ${gs.log[0]}` : `⚠️ Dernier tour de ${gs.players[gs.currentPlayer].name}…`)
-            : isMyTurn
-              ? `🎯 Votre tour — ${gs.log[0]}`
-              : `⏳ Tour de ${gs.players[gs.currentPlayer].name}… ${gs.log[0]}`}
+          : isMyTurn
+            ? `🎯 Votre tour — ${gs.log[0]}`
+            : `⏳ Tour de ${gs.players[gs.currentPlayer].name}… ${gs.log[0]}`}
       </div>
 
       {/* PLATEAU CENTRAL */}
