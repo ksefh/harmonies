@@ -216,6 +216,12 @@ const scoreGrid = grid => {
   const vb=new Set();let mx=0;
   bIds.forEach(s=>{if(vb.has(s))return;const q=[s];let len=0;while(q.length){const c=q.shift();if(vb.has(c)||!bIds.has(c))continue;vb.add(c);len++;const h=m[c];if(h)getNeighborIds(h.q,h.r).forEach(n=>{if(!vb.has(n)&&bIds.has(n))q.push(n);});}mx=Math.max(mx,len);});
   river=getRiverScore(mx);
+  grid.forEach(h => {
+    if (h.stack.length > 0 && h.stack[h.stack.length - 1] === 'GREEN') {
+      // On récupère le score selon la hauteur (1, 2 ou 3)
+      trees += TREE_PTS[h.stack.length] || 0;
+    }
+  });
   return{trees,mountains,fields,buildings,river,total:trees+mountains+fields+buildings+river};
 };
 
